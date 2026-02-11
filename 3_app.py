@@ -17,6 +17,25 @@ st.set_page_config(
     layout="wide"
 )
 
+# --- TAMBAHKAN KODE INI UNTUK MENYEMBUNYIKAN NAVBAR ---
+st.markdown("""
+<style>
+    /* Menyembunyikan Menu Hamburger (Titik Tiga di Kanan Atas) */
+    #MainMenu {visibility: hidden;}
+    
+    /* Menyembunyikan Footer "Made with Streamlit" */
+    footer {visibility: hidden;}
+    
+    /* Menyembunyikan Header Garis Warna-warni di Paling Atas */
+    header {visibility: hidden;}
+    
+    /* Opsi Tambahan: Menghilangkan Padding Atas agar Web mentok ke atas */
+    .block-container {
+        padding-top: 1rem;
+        padding-bottom: 0rem;
+    }
+</style>
+""", unsafe_allow_html=True)
 # ==========================================
 # 2. HEADER & TOGGLE TEMA
 # ==========================================
@@ -264,3 +283,4 @@ if tombol:
 
             except Exception as e:
                 st.error(f"Error: {e}")
+
