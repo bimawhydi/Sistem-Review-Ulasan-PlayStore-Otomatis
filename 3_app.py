@@ -19,13 +19,7 @@ st.set_page_config(
 )
 
 # =========================================================
-# 2) THEME STATE (PERSIST)
-# =========================================================
-if "is_dark_mode" not in st.session_state:
-    st.session_state.is_dark_mode = True
-
-# =========================================================
-# 3) SIDEBAR (SETTINGS)
+# 2) SIDEBAR: SETTINGS (ONLY)
 # =========================================================
 with st.sidebar:
     st.markdown("## 🔮 Review Insight Pro")
@@ -33,15 +27,8 @@ with st.sidebar:
     st.divider()
 
     st.markdown("### ⚙️ Pengaturan")
-    st.session_state.is_dark_mode = st.toggle(
-        "🌙 Mode Gelap",
-        value=st.session_state.is_dark_mode,
-        key="toggle_sidebar",
-        help="Aktifkan untuk dark mode, matikan untuk light mode.",
-    )
-    st.caption("Jika sidebar tersembunyi, gunakan toggle di header.")
-
-is_dark_mode = st.session_state.is_dark_mode
+    is_dark_mode = st.toggle("🌙 Mode Gelap", value=True)
+    st.caption("Matikan untuk mode terang.")
 
 # Theme tokens
 if is_dark_mode:
@@ -78,16 +65,18 @@ else:
     }
 
 # =========================================================
-# 4) GLOBAL CSS (MODERN UI)
+# 3) GLOBAL CSS (MODERN UI)
 # =========================================================
 st.markdown(
     f"""
 <style>
+    /* Hide default Streamlit chrome */
     #MainMenu {{visibility: hidden;}}
     footer {{visibility: hidden;}}
     header {{visibility: hidden;}}
-    .block-container {{padding-top: 1.1rem; padding-bottom: 2rem;}}
+    .block-container {{padding-top: 1.25rem; padding-bottom: 2rem;}}
 
+    /* App background */
     .stApp {{
         background: radial-gradient(1200px 600px at 15% 5%, rgba(79,140,255,.22), transparent 55%),
                     radial-gradient(900px 500px at 90% 10%, rgba(34,211,238,.18), transparent 50%),
@@ -95,11 +84,15 @@ st.markdown(
         color: {T["text"]};
     }}
 
+    /* Typography */
     h1, h2, h3, h4, h5, h6, p, span, div, label, li {{
         color: {T["text"]} !important;
     }}
-    .muted {{ color: {T["muted"]} !important; }}
+    .muted {{
+        color: {T["muted"]} !important;
+    }}
 
+    /* Cards */
     .card {{
         background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,0)) , {T["card"]};
         border: 1px solid {T["border"]};
@@ -112,6 +105,7 @@ st.markdown(
         border-radius: 14px;
     }}
 
+    /* Hero */
     .hero {{
         border-radius: 18px;
         padding: 18px 18px;
@@ -144,6 +138,7 @@ st.markdown(
         margin-right: 8px;
     }}
 
+    /* Inputs */
     .stTextInput input, .stNumberInput input {{
         background: {T["input"]} !important;
         border: 1px solid {T["border"]} !important;
@@ -152,6 +147,7 @@ st.markdown(
         color: {T["text"]} !important;
     }}
 
+    /* Buttons */
     button[kind="primary"] {{
         background: linear-gradient(90deg, {T["primary"]}, {T["primary2"]}) !important;
         border: none !important;
@@ -166,6 +162,7 @@ st.markdown(
         border: 1px solid {T["border"]} !important;
     }}
 
+    /* Metrics */
     div[data-testid="stMetric"] {{
         background: {T["card2"]};
         border: 1px solid {T["border"]};
@@ -174,6 +171,7 @@ st.markdown(
         box-shadow: 0 10px 30px rgba(0,0,0,.08);
     }}
 
+    /* Tabs */
     button[data-baseweb="tab"] {{
         background: transparent !important;
         border-radius: 12px !important;
@@ -187,6 +185,7 @@ st.markdown(
         color: {T["text"]} !important;
     }}
 
+    /* Dataframe container */
     .stDataFrame {{
         border: 1px solid {T["border"]};
         border-radius: 14px;
@@ -198,7 +197,7 @@ st.markdown(
 )
 
 # =========================================================
-# 5) LOAD AI + HELPERS
+# 4) LOAD AI + HELPERS
 # =========================================================
 @st.cache_resource
 def load_ai():
@@ -215,7 +214,8 @@ def bersihkan_teks(teks: str) -> str:
     teks = teks.lower()
     teks = re.sub(r"\d+", "", teks)
     teks = teks.translate(str.maketrans("", "", string.punctuation))
-    return teks.strip()
+    teks = teks.strip()
+    return teks
 
 def ambil_app_id(url: str):
     match = re.search(r"id=([a-zA-Z0-9\._]+)", url)
@@ -235,20 +235,20 @@ def buat_wordcloud(text_data: str, is_dark: bool):
     return plt
 
 # =========================================================
-# 6) SESSION STATE (results)
+# 5) SESSION STATE (persist results across tabs)
 # =========================================================
 if "df" not in st.session_state:
     st.session_state.df = None
 if "info_app" not in st.session_state:
     st.session_state.info_app = None
+if "last_error" not in st.session_state:
+    st.session_state.last_error = None
 
 # =========================================================
-# 7) HERO + HEADER TOGGLE (VISIBLE)
+# 6) HERO HEADER
 # =========================================================
-colH1, colH2 = st.columns([0.78, 0.22])
-with colH1:
-    st.markdown(
-        f"""
+st.markdown(
+    f"""
 <div class="hero">
   <div class="chip">AI Sentiment</div>
   <div class="chip">Google Play Scraper</div>
@@ -257,28 +257,17 @@ with colH1:
   <p class="hero-sub">Analisis sentimen ulasan Google Play Store otomatis dengan AI — tampil modern, cepat, dan enak dibaca.</p>
 </div>
 """,
-        unsafe_allow_html=True,
-    )
-with colH2:
-    st.markdown('<div class="card card-tight">', unsafe_allow_html=True)
-    st.markdown("**Tema**", unsafe_allow_html=False)
-    # Toggle di header (selalu kelihatan)
-    st.session_state.is_dark_mode = st.toggle(
-        "🌙 Dark Mode",
-        value=st.session_state.is_dark_mode,
-        key="toggle_header",
-    )
-    st.markdown("</div>", unsafe_allow_html=True)
-
+    unsafe_allow_html=True,
+)
 st.write("")
 
 # =========================================================
-# NAV: TABS
+# NAV UTAMA: TABS (Pasti bisa diklik)
 # =========================================================
 tab_analisis, tab_dashboard, tab_data = st.tabs(["📌 Analisis", "📊 Dashboard", "📝 Data"])
 
 # =========================================================
-# TAB ANALISIS
+# 7) TAB: ANALISIS (INPUT + RUN)
 # =========================================================
 with tab_analisis:
     left, right = st.columns([1.35, 1])
@@ -294,7 +283,12 @@ with tab_analisis:
             key="input_url",
         )
         jumlah_review = st.number_input(
-            "🔢 Jumlah Review", min_value=10, max_value=2000, value=50, step=10, key="jumlah_review"
+            "🔢 Jumlah Review",
+            min_value=10,
+            max_value=2000,
+            value=50,
+            step=10,
+            key="jumlah_review",
         )
 
         colA, colB = st.columns([1, 1])
@@ -306,6 +300,7 @@ with tab_analisis:
         if clear:
             st.session_state.df = None
             st.session_state.info_app = None
+            st.session_state.last_error = None
             st.toast("Hasil di-reset.", icon="🧹")
 
         st.markdown("</div>", unsafe_allow_html=True)
@@ -324,21 +319,31 @@ with tab_analisis:
 
     if run:
         if not model:
-            st.error("⚠️ File Model (.pkl) hilang / tidak terbaca.")
+            st.session_state.last_error = "⚠️ File Model (.pkl) hilang / tidak terbaca."
+            st.error(st.session_state.last_error)
         elif not input_url:
-            st.warning("⚠️ Masukkan link dulu.")
+            st.session_state.last_error = "⚠️ Masukkan link dulu."
+            st.warning(st.session_state.last_error)
         else:
             app_id = ambil_app_id(input_url)
             if not app_id:
-                st.error("❌ Link tidak valid (app id tidak ditemukan).")
+                st.session_state.last_error = "❌ Link tidak valid (app id tidak ditemukan)."
+                st.error(st.session_state.last_error)
             else:
                 try:
                     with st.spinner("Sedang bekerja..."):
                         info_app = app(app_id, lang="id", country="id")
-                        hasil_scrape, _ = reviews(app_id, lang="id", country="id", sort=Sort.NEWEST, count=jumlah_review)
+                        hasil_scrape, _ = reviews(
+                            app_id,
+                            lang="id",
+                            country="id",
+                            sort=Sort.NEWEST,
+                            count=jumlah_review,
+                        )
 
                     if len(hasil_scrape) == 0:
-                        st.warning("Belum ada review.")
+                        st.session_state.last_error = "Belum ada review."
+                        st.warning(st.session_state.last_error)
                     else:
                         data_hasil = []
                         for item in hasil_scrape:
@@ -356,12 +361,15 @@ with tab_analisis:
                         df = pd.DataFrame(data_hasil)
                         st.session_state.df = df
                         st.session_state.info_app = info_app
+                        st.session_state.last_error = None
+
                         st.success("✅ Analisis selesai! Klik tab **Dashboard** / **Data** di atas.")
                 except Exception as e:
-                    st.error(f"Terjadi Kesalahan: {e}")
+                    st.session_state.last_error = f"Terjadi Kesalahan: {e}"
+                    st.error(st.session_state.last_error)
 
 # =========================================================
-# TAB DASHBOARD
+# 8) TAB: DASHBOARD (Statistik + WordCloud)
 # =========================================================
 with tab_dashboard:
     df = st.session_state.df
@@ -406,9 +414,13 @@ with tab_dashboard:
         with g1:
             st.markdown('<div class="card">', unsafe_allow_html=True)
             st.markdown("#### Perbandingan Sentimen")
+
             base = alt.Chart(df).encode(theta=alt.Theta("count()", stack=True))
             pie = base.mark_arc(innerRadius=65).encode(
-                color=alt.Color("Sentimen", scale=alt.Scale(domain=["Positif", "Negatif"], range=[T["success"], T["danger"]])),
+                color=alt.Color(
+                    "Sentimen",
+                    scale=alt.Scale(domain=["Positif", "Negatif"], range=[T["success"], T["danger"]]),
+                ),
                 tooltip=["Sentimen", "count()"],
             ).properties(height=320)
             st.altair_chart(pie, use_container_width=True)
@@ -417,11 +429,19 @@ with tab_dashboard:
         with g2:
             st.markdown('<div class="card">', unsafe_allow_html=True)
             st.markdown("#### Tren Harian")
-            harian = df.groupby([pd.Grouper(key="Tanggal", freq="D"), "Sentimen"]).size().reset_index(name="Jumlah")
+
+            harian = (
+                df.groupby([pd.Grouper(key="Tanggal", freq="D"), "Sentimen"])
+                .size()
+                .reset_index(name="Jumlah")
+            )
             line = alt.Chart(harian).mark_line(point=True).encode(
                 x=alt.X("Tanggal:T", title="Tanggal"),
                 y=alt.Y("Jumlah:Q", title="Jumlah Review"),
-                color=alt.Color("Sentimen", scale=alt.Scale(domain=["Positif", "Negatif"], range=[T["success"], T["danger"]])),
+                color=alt.Color(
+                    "Sentimen",
+                    scale=alt.Scale(domain=["Positif", "Negatif"], range=[T["success"], T["danger"]]),
+                ),
                 tooltip=["Tanggal:T", "Sentimen", "Jumlah:Q"],
             ).properties(height=320)
             st.altair_chart(line, use_container_width=True)
@@ -429,6 +449,7 @@ with tab_dashboard:
 
         st.write("")
         w1, w2 = st.columns(2)
+
         with w1:
             st.markdown('<div class="card">', unsafe_allow_html=True)
             st.markdown("#### 😊 WordCloud Positif")
@@ -436,7 +457,7 @@ with tab_dashboard:
             if tp:
                 st.pyplot(buat_wordcloud(tp, is_dark_mode))
             else:
-                st.info("Tidak ada data positif.")
+                st.info("Tidak ada data positif untuk dibuat WordCloud.")
             st.markdown("</div>", unsafe_allow_html=True)
 
         with w2:
@@ -446,11 +467,11 @@ with tab_dashboard:
             if tn:
                 st.pyplot(buat_wordcloud(tn, is_dark_mode))
             else:
-                st.info("Tidak ada data negatif.")
+                st.info("Tidak ada data negatif untuk dibuat WordCloud.")
             st.markdown("</div>", unsafe_allow_html=True)
 
 # =========================================================
-# TAB DATA
+# 9) TAB: DATA (table + download)
 # =========================================================
 with tab_data:
     df = st.session_state.df
@@ -467,7 +488,13 @@ with tab_data:
         c1, c2 = st.columns([1, 1])
         with c1:
             csv = df.to_csv(index=False).encode("utf-8")
-            st.download_button("⬇️ Download CSV", csv, "data_review_sentimen.csv", "text/csv", use_container_width=True)
+            st.download_button(
+                "⬇️ Download CSV",
+                csv,
+                "data_review_sentimen.csv",
+                "text/csv",
+                use_container_width=True,
+            )
         with c2:
             st.markdown(
                 '<div class="muted" style="padding:8px 2px;">Tip: kalau butuh filter cepat, klik header kolom di tabel.</div>',
