@@ -18,40 +18,39 @@ st.set_page_config(
 )
 
 # ==========================================
-# 2. HEADER & THEME TOGGLE (NO SIDEBAR)
+# 2. HEADER & TOGGLE TEMA
 # ==========================================
-# Kita buat layout 2 kolom: Kiri (Judul), Kanan (Tombol Toggle)
-col_header, col_toggle = st.columns([6, 1])
+col_title, col_toggle = st.columns([8, 2])
 
-with col_header:
+with col_title:
     st.markdown("## 🔮 Review Insight Pro")
+    st.caption("Analisis sentimen ulasan Google Play Store otomatis dengan AI.")
 
 with col_toggle:
-    st.write("") # Spasi kosong biar sejajar
-    # Tombol Toggle di pojok kanan atas
-    is_dark_mode = st.toggle("🌙 Dark Mode", value=False)
+    # Toggle Switch
+    is_dark_mode = st.toggle("🌙 Mode Gelap", value=False)
 
 # ==========================================
-# 3. LOGIKA WARNA (CSS INJECTION)
+# 3. LOGIKA CSS (STYLING)
 # ==========================================
 if is_dark_mode:
-    # --- PALET DARK MODE ---
-    bg_color = "#0E1117"        # Background Utama Gelap
-    text_color = "#FAFAFA"      # Teks Putih
-    card_bg = "#262730"         # Background Kartu/Container
-    input_bg = "#353842"        # Background Kotak Input
-    metric_bg = "#1F2937"       # Background Angka Statistik
+    # --- DARK MODE ---
+    bg_color = "#0E1117"
+    text_color = "#FAFAFA"
+    card_bg = "#262730"
+    input_bg = "#353842"
     border_color = "#444444"
+    placeholder_color = "#AAAAAA" # Warna teks samar
 else:
-    # --- PALET LIGHT MODE ---
-    bg_color = "#FFFFFF"        # Background Utama Putih
-    text_color = "#31333F"      # Teks Hitam Abu
-    card_bg = "#F8F9FA"         # Background Kartu
-    input_bg = "#FFFFFF"        # Background Kotak Input
-    metric_bg = "#FFFFFF"       # Background Angka Statistik
+    # --- LIGHT MODE ---
+    bg_color = "#FFFFFF"
+    text_color = "#31333F"
+    card_bg = "#F9F9F9"
+    input_bg = "#FFFFFF"
     border_color = "#E0E0E0"
+    placeholder_color = "#666666"
 
-# CSS SAKTI UNTUK MEMAKSA WARNA
+# INJEKSI CSS YANG LEBIH KUAT
 st.markdown(f"""
 <style>
     /* 1. Background Utama */
@@ -59,55 +58,60 @@ st.markdown(f"""
         background-color: {bg_color};
     }}
 
-    /* 2. Mengubah SEMUA Teks (Judul, Paragraf, Label Input) */
-    h1, h2, h3, h4, h5, h6, p, span, div, label {{
+    /* 2. Warna Teks Global */
+    h1, h2, h3, h4, h5, h6, p, li, span, div {{
         color: {text_color} !important;
     }}
 
-    /* 3. Khusus Label di atas Input Box (Sering bermasalah) */
+    /* 3. Perbaikan Input Box (Biar Teks Terbaca) */
+    .stTextInput input, .stNumberInput input {{
+        background-color: {input_bg} !important;
+        color: {text_color} !important;
+        border: 1px solid {border_color} !important;
+    }}
+    
+    /* 4. Perbaikan Warna Placeholder (Teks Samar) */
+    ::placeholder {{
+        color: {placeholder_color} !important;
+        opacity: 1;
+    }}
+
+    /* 5. Perbaikan Label di atas Input */
     .stTextInput label, .stNumberInput label {{
         color: {text_color} !important;
     }}
-    
-    /* 4. Mengubah Warna Kotak Input (Tempat ngetik) */
-    .stTextInput > div > div, .stNumberInput > div > div {{
-        background-color: {input_bg};
+
+    /* 6. Styling Kartu Statistik (Metric) */
+    div[data-testid="stMetric"] {{
+        background-color: {card_bg};
+        border: 1px solid {border_color};
+        padding: 10px;
+        border-radius: 8px;
         color: {text_color};
-        border-color: {border_color};
-    }}
-    
-    /* 5. Warna Teks yang diketik user di dalam kotak */
-    input {{
-        color: {text_color} !important;
     }}
 
-    /* 6. Styling Container/Card (Expander & Kotak) */
+    /* 7. Styling Expander/Container */
     div[data-testid="stExpander"], div.css-1r6slb0 {{
         background-color: {card_bg};
-        border-radius: 10px;
         border: 1px solid {border_color};
+        border-radius: 8px;
     }}
-    
-    /* 7. Styling Metric (Kotak Statistik) */
-    div[data-testid="stMetric"] {{
-        background-color: {metric_bg};
-        border: 1px solid {border_color};
-        padding: 15px;
-        border-radius: 10px;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-    }}
-    
-    /* 8. Tombol Primary (Merah) */
+
+    /* 8. Tombol Analisa (Merah) */
     button[kind="primary"] {{
         background-color: #FF4B4B;
-        color: white !important; /* Teks tombol selalu putih */
+        color: white !important;
         border: none;
+        font-weight: bold;
+    }}
+    button[kind="primary"]:hover {{
+        background-color: #D93030;
     }}
 </style>
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 4. LOAD AI & FUNGSI BANTUAN
+# 4. LOAD AI
 # ==========================================
 @st.cache_resource
 def load_ai():
@@ -120,6 +124,7 @@ def load_ai():
 
 model, vectorizer = load_ai()
 
+# Fungsi helper lainnya tetap sama
 def bersihkan_teks(teks):
     teks = teks.lower()
     teks = re.sub(r"\d+", "", teks)
@@ -141,30 +146,33 @@ def buat_wordcloud(text_data, is_dark):
     return plt
 
 # ==========================================
-# 5. INPUT SECTION (MAIN AREA)
+# 5. INPUT SECTION
 # ==========================================
-st.write("Analisis sentimen ulasan Google Play Store otomatis dengan AI.")
+st.markdown("---")
 
-# Container Input dengan Border Halus
-with st.container(border=True):
-    col_input, col_num = st.columns([4, 1])
+# Container Utama
+with st.container():
+    c1, c2 = st.columns([3, 1])
     
-    with col_input:
-        input_url = st.text_input("🔗 Tempel Link Aplikasi Play Store:", placeholder="Contoh: https://play.google.com/store/apps/details?id=com.gojek.app")
+    with c1:
+        input_url = st.text_input(
+            "🔗 Tempel Link Aplikasi Play Store:", 
+            placeholder="https://play.google.com/store/apps/details?id=com.mobile.legends"
+        )
     
-    with col_num:
+    with c2:
         jumlah_review = st.number_input("🔢 Jumlah Data:", min_value=10, max_value=2000, value=50, step=10)
     
-    tombol_analisa = st.button("🚀 Analisa Sekarang", type="primary", use_container_width=True)
+    tombol = st.button("🚀 Analisa Sekarang", type="primary", use_container_width=True)
 
 # ==========================================
-# 6. LOGIKA & TAMPILAN HASIL
+# 6. OUTPUT SECTION
 # ==========================================
-if tombol_analisa:
+if tombol:
     if not model:
         st.error("⚠️ File Model (.pkl) tidak ditemukan.")
     elif not input_url:
-        st.warning("⚠️ Masukkan link aplikasi dulu ya!")
+        st.warning("⚠️ Masukkan link aplikasi dulu.")
     else:
         app_id = ambil_app_id(input_url)
         if not app_id:
@@ -172,16 +180,14 @@ if tombol_analisa:
         else:
             try:
                 with st.spinner('Sedang bekerja...'):
-                    # SCRAPING
                     info_app = app(app_id, lang='id', country='id')
                     hasil_scrape, _ = reviews(
                         app_id, lang='id', country='id', sort=Sort.NEWEST, count=jumlah_review
                     )
 
                 if len(hasil_scrape) == 0:
-                    st.warning("Belum ada review untuk aplikasi ini.")
+                    st.warning("Belum ada review.")
                 else:
-                    # PREDIKSI AI
                     data_hasil = []
                     for item in hasil_scrape:
                         clean = bersihkan_teks(item['content'])
@@ -196,73 +202,65 @@ if tombol_analisa:
                     
                     df = pd.DataFrame(data_hasil)
 
-                    # --- HASIL DASHBOARD ---
+                    # HASIL
                     st.success("✅ Selesai!")
                     
-                    # Info Aplikasi
-                    c1, c2 = st.columns([1, 6])
-                    with c1:
-                        st.image(info_app['icon'], width=90)
-                    with c2:
+                    # Header Info App
+                    with st.container():
+                        st.image(info_app['icon'], width=80)
                         st.markdown(f"### {info_app['title']}")
                         st.caption(f"{info_app['developer']} | ⭐ {info_app['score']}")
 
                     st.markdown("---")
 
-                    # TAB MENU
-                    tab1, tab2, tab3 = st.tabs(["📊 Statistik", "☁️ WordCloud", "📝 Data Tabel"])
+                    # TAB
+                    t1, t2, t3 = st.tabs(["📊 Statistik", "☁️ WordCloud", "📝 Data"])
 
-                    # TAB 1: STATISTIK
-                    with tab1:
-                        total = len(df)
+                    with t1:
+                        tot = len(df)
                         pos = len(df[df['Sentimen'] == 'Positif'])
                         neg = len(df[df['Sentimen'] == 'Negatif'])
-
-                        m1, m2, m3 = st.columns(3)
-                        m1.metric("Total Review", total)
-                        m2.metric("Positif", pos, f"{pos/total*100:.1f}%")
-                        m3.metric("Negatif", neg, f"-{neg/total*100:.1f}%", delta_color="inverse")
-
-                        st.markdown("###")
                         
+                        k1, k2, k3 = st.columns(3)
+                        k1.metric("Total Review", tot)
+                        k2.metric("Positif", pos, f"{pos/tot*100:.1f}%")
+                        k3.metric("Negatif", neg, f"-{neg/tot*100:.1f}%", delta_color="inverse")
+                        
+                        st.write("####")
                         g1, g2 = st.columns(2)
                         with g1:
-                            st.write("**Komposisi Sentimen**")
+                            st.caption("Perbandingan")
                             base = alt.Chart(df).encode(theta=alt.Theta("count()", stack=True))
                             pie = base.mark_arc(innerRadius=60).encode(
                                 color=alt.Color("Sentimen", scale=alt.Scale(domain=['Positif', 'Negatif'], range=['#2ECC71', '#E74C3C'])),
                                 tooltip=["Sentimen", "count()"]
                             ).properties(height=300)
                             st.altair_chart(pie, use_container_width=True)
-
                         with g2:
-                            st.write("**Tren Sentimen**")
-                            daily = df.groupby([pd.Grouper(key='Tanggal', freq='D'), 'Sentimen']).size().reset_index(name='Jumlah')
-                            line = alt.Chart(daily).mark_line(point=True).encode(
+                            st.caption("Tren Harian")
+                            harian = df.groupby([pd.Grouper(key='Tanggal', freq='D'), 'Sentimen']).size().reset_index(name='Jml')
+                            line = alt.Chart(harian).mark_line(point=True).encode(
                                 x='Tanggal',
-                                y='Jumlah',
-                                color=alt.Color('Sentimen', scale=alt.Scale(domain=['Positif', 'Negatif'], range=['#2ECC71', '#E74C3C'])),
-                                tooltip=['Tanggal', 'Sentimen', 'Jumlah']
+                                y='Jml',
+                                color=alt.Color('Sentimen', scale=alt.Scale(domain=['Positif', 'Negatif'], range=['#2ECC71', '#E74C3C']))
                             ).properties(height=300)
                             st.altair_chart(line, use_container_width=True)
 
-                    # TAB 2: WORDCLOUD
-                    with tab2:
-                        wc1, wc2 = st.columns(2)
-                        with wc1:
-                            st.success("Kata Kunci Positif")
-                            txt_pos = " ".join(df[df['Sentimen'] == 'Positif']['Review Bersih'])
-                            if txt_pos: st.pyplot(buat_wordcloud(txt_pos, is_dark_mode))
-                        with wc2:
-                            st.error("Kata Kunci Negatif")
-                            txt_neg = " ".join(df[df['Sentimen'] == 'Negatif']['Review Bersih'])
-                            if txt_neg: st.pyplot(buat_wordcloud(txt_neg, is_dark_mode))
+                    with t2:
+                        w1, w2 = st.columns(2)
+                        with w1:
+                            st.info("Positif")
+                            tp = " ".join(df[df['Sentimen'] == 'Positif']['Review Bersih'])
+                            if tp: st.pyplot(buat_wordcloud(tp, is_dark_mode))
+                        with w2:
+                            st.error("Negatif")
+                            tn = " ".join(df[df['Sentimen'] == 'Negatif']['Review Bersih'])
+                            if tn: st.pyplot(buat_wordcloud(tn, is_dark_mode))
 
-                    # TAB 3: DATA RAW
-                    with tab3:
+                    with t3:
                         st.dataframe(df, use_container_width=True)
                         csv = df.to_csv(index=False).encode('utf-8')
-                        st.download_button("📥 Download CSV", csv, f"review_{app_id}.csv", "text/csv")
+                        st.download_button("Download CSV", csv, "data.csv", "text/csv")
 
             except Exception as e:
-                st.error(f"Terjadi Kesalahan: {e}")
+                st.error(f"Error: {e}")
