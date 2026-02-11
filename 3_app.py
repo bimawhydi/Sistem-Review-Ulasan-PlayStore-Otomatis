@@ -19,21 +19,11 @@ st.set_page_config(
 )
 
 # =========================================================
-# 2) SIDEBAR: NAV + THEME
+# 2) SIDEBAR: SETTINGS (ONLY)
 # =========================================================
 with st.sidebar:
     st.markdown("## 🔮 Review Insight Pro")
     st.caption("Google Play Review • Sentiment Insight")
-
-    st.divider()
-
-    page = st.radio(
-        "Navigasi",
-        ["📌 Analisis", "📊 Dashboard", "📝 Data"],
-        index=0,
-        label_visibility="visible",
-    )
-
     st.divider()
 
     st.markdown("### ⚙️ Pengaturan")
@@ -207,7 +197,7 @@ st.markdown(
 )
 
 # =========================================================
-# 4) LOAD AI + HELPERS (tetap sama)
+# 4) LOAD AI + HELPERS
 # =========================================================
 @st.cache_resource
 def load_ai():
@@ -245,7 +235,7 @@ def buat_wordcloud(text_data: str, is_dark: bool):
     return plt
 
 # =========================================================
-# 5) SESSION STATE (supaya page "Dashboard/Data" bisa akses hasil)
+# 5) SESSION STATE (persist results across tabs)
 # =========================================================
 if "df" not in st.session_state:
     st.session_state.df = None
@@ -255,7 +245,7 @@ if "last_error" not in st.session_state:
     st.session_state.last_error = None
 
 # =========================================================
-# 6) HEADER (Hero)
+# 6) HERO HEADER
 # =========================================================
 st.markdown(
     f"""
@@ -269,13 +259,17 @@ st.markdown(
 """,
     unsafe_allow_html=True,
 )
-
 st.write("")
 
 # =========================================================
-# 7) PAGE: ANALISIS (INPUT + RUN)
+# NAV UTAMA: TABS (Pasti bisa diklik)
 # =========================================================
-if page == "📌 Analisis":
+tab_analisis, tab_dashboard, tab_data = st.tabs(["📌 Analisis", "📊 Dashboard", "📝 Data"])
+
+# =========================================================
+# 7) TAB: ANALISIS (INPUT + RUN)
+# =========================================================
+with tab_analisis:
     left, right = st.columns([1.35, 1])
 
     with left:
@@ -286,14 +280,22 @@ if page == "📌 Analisis":
         input_url = st.text_input(
             "🔗 Link Aplikasi",
             placeholder="https://play.google.com/store/apps/details?id=com.gojek.app",
+            key="input_url",
         )
-        jumlah_review = st.number_input("🔢 Jumlah Review", min_value=10, max_value=2000, value=50, step=10)
+        jumlah_review = st.number_input(
+            "🔢 Jumlah Review",
+            min_value=10,
+            max_value=2000,
+            value=50,
+            step=10,
+            key="jumlah_review",
+        )
 
         colA, colB = st.columns([1, 1])
         with colA:
-            run = st.button("Analisa Sekarang", type="primary", use_container_width=True)
+            run = st.button("Analisa Sekarang", type="primary", use_container_width=True, key="run_btn")
         with colB:
-            clear = st.button("Reset Hasil", type="secondary", use_container_width=True)
+            clear = st.button("Reset Hasil", type="secondary", use_container_width=True, key="clear_btn")
 
         if clear:
             st.session_state.df = None
@@ -315,7 +317,6 @@ if page == "📌 Analisis":
         )
         st.markdown("</div>", unsafe_allow_html=True)
 
-    # ===== Run logic (tetap sama, hanya UI wrapper) =====
     if run:
         if not model:
             st.session_state.last_error = "⚠️ File Model (.pkl) hilang / tidak terbaca."
@@ -357,28 +358,26 @@ if page == "📌 Analisis":
                                     "Tanggal": pd.to_datetime(item["at"]),
                                 }
                             )
-
                         df = pd.DataFrame(data_hasil)
                         st.session_state.df = df
                         st.session_state.info_app = info_app
                         st.session_state.last_error = None
 
-                        st.success("✅ Analisis selesai! Buka menu **Dashboard** / **Data** di sidebar.")
+                        st.success("✅ Analisis selesai! Klik tab **Dashboard** / **Data** di atas.")
                 except Exception as e:
                     st.session_state.last_error = f"Terjadi Kesalahan: {e}"
                     st.error(st.session_state.last_error)
 
 # =========================================================
-# 8) PAGE: DASHBOARD (Statistik + WordCloud)
+# 8) TAB: DASHBOARD (Statistik + WordCloud)
 # =========================================================
-elif page == "📊 Dashboard":
+with tab_dashboard:
     df = st.session_state.df
     info_app = st.session_state.info_app
 
     if df is None or info_app is None:
-        st.info("Belum ada hasil. Silakan analisis dulu di menu **📌 Analisis**.")
+        st.info("Belum ada hasil. Silakan analisis dulu di tab **📌 Analisis**.")
     else:
-        # App header card
         st.markdown('<div class="card">', unsafe_allow_html=True)
         c_img, c_info, c_badge = st.columns([0.18, 0.62, 0.2], vertical_alignment="center")
         with c_img:
@@ -399,7 +398,6 @@ elif page == "📊 Dashboard":
         st.markdown("</div>", unsafe_allow_html=True)
         st.write("")
 
-        # Metrics
         tot = len(df)
         pos = len(df[df["Sentimen"] == "Positif"])
         neg = len(df[df["Sentimen"] == "Negatif"])
@@ -411,83 +409,76 @@ elif page == "📊 Dashboard":
         m4.metric("Skor Sentimen", round((pos - neg) / tot * 100, 1), "pos - neg (%)")
 
         st.write("")
+        g1, g2 = st.columns(2)
 
-        tab1, tab2 = st.tabs(["📈 Visualisasi", "☁️ WordCloud"])
+        with g1:
+            st.markdown('<div class="card">', unsafe_allow_html=True)
+            st.markdown("#### Perbandingan Sentimen")
 
-        with tab1:
-            g1, g2 = st.columns(2)
+            base = alt.Chart(df).encode(theta=alt.Theta("count()", stack=True))
+            pie = base.mark_arc(innerRadius=65).encode(
+                color=alt.Color(
+                    "Sentimen",
+                    scale=alt.Scale(domain=["Positif", "Negatif"], range=[T["success"], T["danger"]]),
+                ),
+                tooltip=["Sentimen", "count()"],
+            ).properties(height=320)
+            st.altair_chart(pie, use_container_width=True)
+            st.markdown("</div>", unsafe_allow_html=True)
 
-            with g1:
-                st.markdown('<div class="card">', unsafe_allow_html=True)
-                st.markdown("#### Perbandingan Sentimen")
+        with g2:
+            st.markdown('<div class="card">', unsafe_allow_html=True)
+            st.markdown("#### Tren Harian")
 
-                base = alt.Chart(df).encode(theta=alt.Theta("count()", stack=True))
-                pie = base.mark_arc(innerRadius=65).encode(
-                    color=alt.Color(
-                        "Sentimen",
-                        scale=alt.Scale(domain=["Positif", "Negatif"], range=[T["success"], T["danger"]]),
-                    ),
-                    tooltip=["Sentimen", "count()"],
-                ).properties(height=320)
+            harian = (
+                df.groupby([pd.Grouper(key="Tanggal", freq="D"), "Sentimen"])
+                .size()
+                .reset_index(name="Jumlah")
+            )
+            line = alt.Chart(harian).mark_line(point=True).encode(
+                x=alt.X("Tanggal:T", title="Tanggal"),
+                y=alt.Y("Jumlah:Q", title="Jumlah Review"),
+                color=alt.Color(
+                    "Sentimen",
+                    scale=alt.Scale(domain=["Positif", "Negatif"], range=[T["success"], T["danger"]]),
+                ),
+                tooltip=["Tanggal:T", "Sentimen", "Jumlah:Q"],
+            ).properties(height=320)
+            st.altair_chart(line, use_container_width=True)
+            st.markdown("</div>", unsafe_allow_html=True)
 
-                st.altair_chart(pie, use_container_width=True)
-                st.markdown("</div>", unsafe_allow_html=True)
+        st.write("")
+        w1, w2 = st.columns(2)
 
-            with g2:
-                st.markdown('<div class="card">', unsafe_allow_html=True)
-                st.markdown("#### Tren Harian")
+        with w1:
+            st.markdown('<div class="card">', unsafe_allow_html=True)
+            st.markdown("#### 😊 WordCloud Positif")
+            tp = " ".join(df[df["Sentimen"] == "Positif"]["Review Bersih"])
+            if tp:
+                st.pyplot(buat_wordcloud(tp, is_dark_mode))
+            else:
+                st.info("Tidak ada data positif untuk dibuat WordCloud.")
+            st.markdown("</div>", unsafe_allow_html=True)
 
-                harian = (
-                    df.groupby([pd.Grouper(key="Tanggal", freq="D"), "Sentimen"])
-                    .size()
-                    .reset_index(name="Jumlah")
-                )
-
-                line = alt.Chart(harian).mark_line(point=True).encode(
-                    x=alt.X("Tanggal:T", title="Tanggal"),
-                    y=alt.Y("Jumlah:Q", title="Jumlah Review"),
-                    color=alt.Color(
-                        "Sentimen",
-                        scale=alt.Scale(domain=["Positif", "Negatif"], range=[T["success"], T["danger"]]),
-                    ),
-                    tooltip=["Tanggal:T", "Sentimen", "Jumlah:Q"],
-                ).properties(height=320)
-
-                st.altair_chart(line, use_container_width=True)
-                st.markdown("</div>", unsafe_allow_html=True)
-
-        with tab2:
-            w1, w2 = st.columns(2)
-
-            with w1:
-                st.markdown('<div class="card">', unsafe_allow_html=True)
-                st.markdown("#### 😊 WordCloud Positif")
-                tp = " ".join(df[df["Sentimen"] == "Positif"]["Review Bersih"])
-                if tp:
-                    st.pyplot(buat_wordcloud(tp, is_dark_mode))
-                else:
-                    st.info("Tidak ada data positif untuk dibuat WordCloud.")
-                st.markdown("</div>", unsafe_allow_html=True)
-
-            with w2:
-                st.markdown('<div class="card">', unsafe_allow_html=True)
-                st.markdown("#### 😡 WordCloud Negatif")
-                tn = " ".join(df[df["Sentimen"] == "Negatif"]["Review Bersih"])
-                if tn:
-                    st.pyplot(buat_wordcloud(tn, is_dark_mode))
-                else:
-                    st.info("Tidak ada data negatif untuk dibuat WordCloud.")
-                st.markdown("</div>", unsafe_allow_html=True)
+        with w2:
+            st.markdown('<div class="card">', unsafe_allow_html=True)
+            st.markdown("#### 😡 WordCloud Negatif")
+            tn = " ".join(df[df["Sentimen"] == "Negatif"]["Review Bersih"])
+            if tn:
+                st.pyplot(buat_wordcloud(tn, is_dark_mode))
+            else:
+                st.info("Tidak ada data negatif untuk dibuat WordCloud.")
+            st.markdown("</div>", unsafe_allow_html=True)
 
 # =========================================================
-# 9) PAGE: DATA (table + download)
+# 9) TAB: DATA (table + download)
 # =========================================================
-else:  # "📝 Data"
+with tab_data:
     df = st.session_state.df
     info_app = st.session_state.info_app
 
     if df is None or info_app is None:
-        st.info("Belum ada hasil. Silakan analisis dulu di menu **📌 Analisis**.")
+        st.info("Belum ada hasil. Silakan analisis dulu di tab **📌 Analisis**.")
     else:
         st.markdown('<div class="card">', unsafe_allow_html=True)
         st.markdown("### 📝 Data Hasil Analisis")
